@@ -43,7 +43,6 @@ let nextReturnId = 1;
 export async function initDatabase(): Promise<void> {
   console.log('✅ Using in-memory database (no setup required!)');
   console.log('📊 Data persists during serverless function execution');
-  // Note: Data resets on each deployment, but works perfectly for Vercel
 }
 
 // Phone operations
@@ -54,7 +53,6 @@ export async function getAllPhones(filters?: {
   try {
     let result = [...phones];
     
-    // Apply search filter
     if (filters?.search) {
       const searchTerm = filters.search.toLowerCase().trim();
       result = result.filter(p => 
@@ -64,12 +62,10 @@ export async function getAllPhones(filters?: {
       );
     }
     
-    // Apply status filter
     if (filters?.status && filters.status !== 'all') {
       result = result.filter(p => p.status === filters.status);
     }
     
-    // Sort by created_at descending
     result.sort((a, b) => {
       const dateA = new Date(a.created_at).getTime();
       const dateB = new Date(b.created_at).getTime();
@@ -111,7 +107,6 @@ export async function addPhone(phoneData: {
   notes?: string;
 }): Promise<{ success: boolean; id?: number; error?: string }> {
   try {
-    // Check for duplicate IMEI
     const existing = await getPhoneByImei(phoneData.imei1);
     if (existing) {
       const modelInfo = existing.model_name ? ` (${existing.model_name})` : '';
@@ -171,7 +166,6 @@ export async function updatePhone(
       return { success: false, error: 'Cannot edit sold phone' };
     }
     
-    // Update fields
     if (phoneData.model_name !== undefined) phone.model_name = phoneData.model_name;
     if (phoneData.storage !== undefined) phone.storage = phoneData.storage;
     if (phoneData.color !== undefined) phone.color = phoneData.color;
@@ -264,7 +258,6 @@ export async function processReturn(
       return { success: false, error: 'This phone is currently in stock and hasn\'t been sold yet.' };
     }
     
-    // Create return record
     const returnRecord: ReturnRecord = {
       id: nextReturnId++,
       phone_id: phoneId,
@@ -277,7 +270,6 @@ export async function processReturn(
     
     returns.push(returnRecord);
     
-    // Restock phone
     phone.status = 'in_stock';
     phone.updated_at = new Date().toISOString();
     phones[phoneIndex] = phone;
@@ -309,7 +301,6 @@ export async function getAllReturns(): Promise<any[]> {
   }
 }
 
-// Reports
 export async function getProfitReport(dateRange: {
   type: 'today' | 'week' | 'month' | 'year' | 'custom';
   startDate?: string;
@@ -332,7 +323,7 @@ export async function getProfitReport(dateRange: {
       startDate = new Date(dateRange.startDate);
       endDate = new Date(dateRange.endDate);
     } else {
-      startDate = new Date(0); // All time
+      startDate = new Date(0);
     }
     
     const sales = phones.filter(p => {
@@ -384,7 +375,6 @@ export async function getInventoryReport(): Promise<any> {
     const currentStockCount = inStock.length;
     const currentStockValue = inStock.reduce((sum, p) => sum + (parseFloat(p.purchase_price?.toString() || '0') || 0), 0);
     
-    // Best selling models
     const soldPhones = phones.filter(p => p.status === 'sold');
     const modelCounts: { [key: string]: number } = {};
     soldPhones.forEach(phone => {
@@ -418,3 +408,4 @@ export async function getInventoryReport(): Promise<any> {
     };
   }
 }
+
