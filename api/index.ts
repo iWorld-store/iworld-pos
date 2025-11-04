@@ -23,19 +23,12 @@ app.use(express.json());
 // Initialize database (with error handling)
 try {
   initDatabase();
+  console.log('Database initialized successfully');
 } catch (error: any) {
   console.error('Database initialization error:', error);
+  console.error('Error details:', error.message, error.stack);
   // Don't throw - allow app to start, but API calls will fail gracefully
 }
-
-// Error handling middleware
-app.use((err: any, req: any, res: any, next: any) => {
-  console.error('API Error:', err);
-  res.status(500).json({ 
-    error: err.message || 'Internal server error',
-    details: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  });
-});
 
 // API Routes (no /api prefix - Vercel handles that)
 app.get('/phones', async (req, res) => {
@@ -186,6 +179,20 @@ app.post('/export/excel', async (req, res) => {
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', message: 'iWorld Store API is running' });
+});
+
+// Error handling middleware (must be after routes)
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error('API Error:', err);
+  res.status(500).json({ 
+    error: err.message || 'Internal server error',
+    details: process.env.VERCEL ? 'Check Vercel function logs for details' : err.stack
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Endpoint not found', path: req.path });
 });
 
 // Export Express app for Vercel
