@@ -20,8 +20,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Initialize database
-initDatabase();
+// Initialize database (with error handling)
+try {
+  initDatabase();
+} catch (error: any) {
+  console.error('Database initialization error:', error);
+  // Don't throw - allow app to start, but API calls will fail gracefully
+}
+
+// Error handling middleware
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error('API Error:', err);
+  res.status(500).json({ 
+    error: err.message || 'Internal server error',
+    details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
 
 // API Routes (no /api prefix - Vercel handles that)
 app.get('/phones', async (req, res) => {
@@ -33,7 +47,11 @@ app.get('/phones', async (req, res) => {
     const phones = getAllPhones(filters);
     res.json(phones);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error('Error in /phones:', error);
+    res.status(500).json({ 
+      error: error.message || 'Failed to fetch phones',
+      details: process.env.VERCEL ? 'Database may not be initialized' : undefined
+    });
   }
 });
 

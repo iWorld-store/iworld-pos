@@ -93,7 +93,11 @@ export function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_return_date ON returns(return_date);
   `);
   
-  console.log('Database initialized at:', dbPath);
+    console.log('Database initialized at:', dbPath);
+  } catch (error: any) {
+    console.error('Database initialization failed:', error);
+    throw new Error(`Failed to initialize database: ${error.message}`);
+  }
 }
 
 function getDb(): Database.Database {

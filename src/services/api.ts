@@ -12,8 +12,14 @@ async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = { error: `HTTP ${response.status}: ${response.statusText || 'Unknown error'}` };
+    }
+    const errorMessage = errorData.error || errorData.message || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
   }
 
   return response.json();
