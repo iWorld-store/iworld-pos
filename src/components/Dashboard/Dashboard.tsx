@@ -131,15 +131,14 @@ const Dashboard: React.FC = () => {
         <Alert severity="error" sx={{ mb: 2 }}>
           {apiError}
         </Alert>
-        <Alert severity="info" sx={{ mt: 2 }}>
-          <Typography variant="body1" gutterBottom>
-            <strong>To run the application properly:</strong>
-          </Typography>
-          <Typography variant="body2" component="div">
-            1. Make sure the server is running: <code style={{ backgroundColor: '#2d2d2d', padding: '2px 6px', borderRadius: '4px' }}>npm run dev</code><br />
-            2. The server should be available at <code style={{ backgroundColor: '#2d2d2d', padding: '2px 6px', borderRadius: '4px' }}>http://localhost:3001</code>
-          </Typography>
-        </Alert>
+            <Alert severity="info" sx={{ mt: 2 }}>
+              <Typography variant="body1" gutterBottom>
+                <strong>Unable to connect to the server.</strong>
+              </Typography>
+              <Typography variant="body2" component="div">
+                Please check if the server is running and accessible. If this is a production deployment, ensure the API endpoints are properly configured.
+              </Typography>
+            </Alert>
       </Box>
     );
   }

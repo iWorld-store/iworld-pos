@@ -119,7 +119,7 @@ app.post('/api/phones/:id/return', async (req, res) => {
   }
 });
 
-app.get('/api/returns', async (req, res) => {
+app.get('/api/returns', async (_req, res) => {
   try {
     const returns = getAllReturns();
     res.json(returns);
@@ -138,7 +138,7 @@ app.post('/api/reports/profit', async (req, res) => {
   }
 });
 
-app.get('/api/reports/inventory', async (req, res) => {
+app.get('/api/reports/inventory', async (_req, res) => {
   try {
     const report = getInventoryReport();
     res.json(report);
@@ -175,7 +175,7 @@ app.post('/api/export/excel', async (req, res) => {
 });
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'iWorld Store API is running' });
 });
 
