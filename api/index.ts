@@ -170,6 +170,8 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'iWorld Store API is running' });
 });
 
-// Export Express app for Vercel
-export default app;
+// Vercel serverless function handler
+export default function handler(req: any, res: any) {
+  return app(req, res);
+}
 
