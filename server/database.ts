@@ -125,16 +125,16 @@ export async function addPhone(phoneData: {
     const newPhone: Phone = {
       id: nextPhoneId++,
       imei1: phoneData.imei1,
-      imei2: phoneData.imei2 || null,
-      model_name: phoneData.model_name || null,
-      storage: phoneData.storage || null,
-      color: phoneData.color || null,
-      condition: phoneData.condition || null,
-      unlock_status: phoneData.unlock_status || null,
+      imei2: phoneData.imei2,
+      model_name: phoneData.model_name,
+      storage: phoneData.storage,
+      color: phoneData.color,
+      condition: phoneData.condition,
+      unlock_status: phoneData.unlock_status,
       purchase_date: phoneData.purchase_date,
       purchase_price: phoneData.purchase_price,
-      vendor: phoneData.vendor || null,
-      notes: phoneData.notes || null,
+      vendor: phoneData.vendor,
+      notes: phoneData.notes,
       status: 'in_stock',
       created_at: now,
       updated_at: now
@@ -231,8 +231,8 @@ export async function sellPhone(
     phone.status = 'sold';
     phone.sale_date = new Date().toISOString();
     phone.sale_price = saleData.sale_price;
-    phone.customer_name = saleData.customer_name || null;
-    phone.payment_method = saleData.payment_method || null;
+    phone.customer_name = saleData.customer_name;
+    phone.payment_method = saleData.payment_method;
     if (saleData.notes) {
       phone.notes = phone.notes ? `${phone.notes}\n${saleData.notes}` : saleData.notes;
     }
@@ -271,7 +271,7 @@ export async function processReturn(
       return_date: new Date().toISOString(),
       return_reason: returnData.return_reason,
       refund_amount: returnData.refund_amount,
-      notes: returnData.notes || null,
+      notes: returnData.notes,
       created_at: new Date().toISOString()
     };
     
