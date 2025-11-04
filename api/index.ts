@@ -41,9 +41,10 @@ app.get('/phones', async (req, res) => {
     res.json(phones);
   } catch (error: any) {
     console.error('Error in /phones:', error);
+    const errorMessage = error.message || 'Failed to fetch phones';
     res.status(500).json({ 
-      error: error.message || 'Failed to fetch phones',
-      details: process.env.VERCEL ? 'Database may not be initialized' : undefined
+      error: errorMessage,
+      details: process.env.VERCEL ? 'SQLite (better-sqlite3) requires native compilation and does not work on Vercel serverless functions. Please deploy on Railway instead - it supports SQLite perfectly.' : undefined
     });
   }
 });
@@ -182,7 +183,7 @@ app.get('/health', (_req, res) => {
 });
 
 // Error handling middleware (must be after routes)
-app.use((err: any, req: any, res: any, next: any) => {
+app.use((err: any, _req: any, res: any, _next: any) => {
   console.error('API Error:', err);
   res.status(500).json({ 
     error: err.message || 'Internal server error',
