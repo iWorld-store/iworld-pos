@@ -3,6 +3,9 @@ import cors from 'cors';
 import * as path from 'path';
 import * as fs from 'fs';
 import { initDatabase } from './database';
+
+// Initialize database on server start
+initDatabase().catch(console.error);
 import {
   getAllPhones,
   getPhoneByImei,
@@ -24,8 +27,8 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Initialize database
-initDatabase();
+// Initialize database (async)
+initDatabase().catch(console.error);
 
 // API Routes (must come before static files)
 
@@ -36,7 +39,7 @@ app.get('/api/phones', async (req, res) => {
       search: req.query.search as string | undefined,
       status: req.query.status as string | undefined,
     };
-    const phones = getAllPhones(filters);
+    const phones = await getAllPhones(filters);
     res.json(phones);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -45,7 +48,7 @@ app.get('/api/phones', async (req, res) => {
 
 app.get('/api/phones/imei/:imei', async (req, res) => {
   try {
-    const phone = getPhoneByImei(req.params.imei);
+    const phone = await getPhoneByImei(req.params.imei);
     if (!phone) {
       return res.status(404).json({ error: 'Phone not found' });
     }
@@ -57,7 +60,7 @@ app.get('/api/phones/imei/:imei', async (req, res) => {
 
 app.post('/api/phones', async (req, res) => {
   try {
-    const result = addPhone(req.body);
+    const result = await addPhone(req.body);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
@@ -70,7 +73,7 @@ app.post('/api/phones', async (req, res) => {
 app.put('/api/phones/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const result = updatePhone(id, req.body);
+    const result = await updatePhone(id, req.body);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
@@ -83,7 +86,7 @@ app.put('/api/phones/:id', async (req, res) => {
 app.delete('/api/phones/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const result = deletePhone(id);
+    const result = await deletePhone(id);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
@@ -96,7 +99,7 @@ app.delete('/api/phones/:id', async (req, res) => {
 app.post('/api/phones/:id/sell', async (req, res) => {
   try {
     const phoneId = parseInt(req.params.id);
-    const result = sellPhone(phoneId, req.body);
+    const result = await sellPhone(phoneId, req.body);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
@@ -109,7 +112,7 @@ app.post('/api/phones/:id/sell', async (req, res) => {
 app.post('/api/phones/:id/return', async (req, res) => {
   try {
     const phoneId = parseInt(req.params.id);
-    const result = processReturn(phoneId, req.body);
+    const result = await processReturn(phoneId, req.body);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
@@ -121,7 +124,7 @@ app.post('/api/phones/:id/return', async (req, res) => {
 
 app.get('/api/returns', async (_req, res) => {
   try {
-    const returns = getAllReturns();
+    const returns = await getAllReturns();
     res.json(returns);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -131,7 +134,7 @@ app.get('/api/returns', async (_req, res) => {
 // Reports
 app.post('/api/reports/profit', async (req, res) => {
   try {
-    const report = getProfitReport(req.body);
+    const report = await getProfitReport(req.body);
     res.json(report);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -140,7 +143,7 @@ app.post('/api/reports/profit', async (req, res) => {
 
 app.get('/api/reports/inventory', async (_req, res) => {
   try {
-    const report = getInventoryReport();
+    const report = await getInventoryReport();
     res.json(report);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

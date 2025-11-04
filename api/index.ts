@@ -20,15 +20,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Initialize database (with error handling)
-try {
-  initDatabase();
-  console.log('Database initialized successfully');
-} catch (error: any) {
-  console.error('Database initialization error:', error);
-  console.error('Error details:', error.message, error.stack);
-  // Don't throw - allow app to start, but API calls will fail gracefully
-}
+// Initialize database (async)
+initDatabase().catch(console.error);
 
 // API Routes (no /api prefix - Vercel handles that)
 app.get('/phones', async (req, res) => {
@@ -37,21 +30,19 @@ app.get('/phones', async (req, res) => {
       search: req.query.search as string | undefined,
       status: req.query.status as string | undefined,
     };
-    const phones = getAllPhones(filters);
+    const phones = await getAllPhones(filters);
     res.json(phones);
   } catch (error: any) {
     console.error('Error in /phones:', error);
-    const errorMessage = error.message || 'Failed to fetch phones';
     res.status(500).json({ 
-      error: errorMessage,
-      details: process.env.VERCEL ? 'SQLite (better-sqlite3) requires native compilation and does not work on Vercel serverless functions. Please deploy on Railway instead - it supports SQLite perfectly.' : undefined
+      error: error.message || 'Failed to fetch phones'
     });
   }
 });
 
 app.get('/phones/imei/:imei', async (req, res) => {
   try {
-    const phone = getPhoneByImei(req.params.imei);
+    const phone = await getPhoneByImei(req.params.imei);
     if (!phone) {
       return res.status(404).json({ error: 'Phone not found' });
     }
@@ -63,7 +54,7 @@ app.get('/phones/imei/:imei', async (req, res) => {
 
 app.post('/phones', async (req, res) => {
   try {
-    const result = addPhone(req.body);
+    const result = await addPhone(req.body);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
@@ -76,7 +67,7 @@ app.post('/phones', async (req, res) => {
 app.put('/phones/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const result = updatePhone(id, req.body);
+    const result = await updatePhone(id, req.body);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
@@ -89,7 +80,7 @@ app.put('/phones/:id', async (req, res) => {
 app.delete('/phones/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const result = deletePhone(id);
+    const result = await deletePhone(id);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
@@ -102,7 +93,7 @@ app.delete('/phones/:id', async (req, res) => {
 app.post('/phones/:id/sell', async (req, res) => {
   try {
     const phoneId = parseInt(req.params.id);
-    const result = sellPhone(phoneId, req.body);
+    const result = await sellPhone(phoneId, req.body);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
@@ -115,7 +106,7 @@ app.post('/phones/:id/sell', async (req, res) => {
 app.post('/phones/:id/return', async (req, res) => {
   try {
     const phoneId = parseInt(req.params.id);
-    const result = processReturn(phoneId, req.body);
+    const result = await processReturn(phoneId, req.body);
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
@@ -127,7 +118,7 @@ app.post('/phones/:id/return', async (req, res) => {
 
 app.get('/returns', async (_req, res) => {
   try {
-    const returns = getAllReturns();
+    const returns = await getAllReturns();
     res.json(returns);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -136,7 +127,7 @@ app.get('/returns', async (_req, res) => {
 
 app.post('/reports/profit', async (req, res) => {
   try {
-    const report = getProfitReport(req.body);
+    const report = await getProfitReport(req.body);
     res.json(report);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -145,7 +136,7 @@ app.post('/reports/profit', async (req, res) => {
 
 app.get('/reports/inventory', async (_req, res) => {
   try {
-    const report = getInventoryReport();
+    const report = await getInventoryReport();
     res.json(report);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
