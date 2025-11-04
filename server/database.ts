@@ -41,58 +41,67 @@ function getDatabasePath(): string {
 }
 
 export function initDatabase() {
-  const dbPath = getDatabasePath();
-  db = new Database(dbPath);
-  
-  // Enable foreign keys
-  db.pragma('foreign_keys = ON');
-  
-  // Create Phones table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS phones (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      imei1 TEXT NOT NULL,
-      imei2 TEXT,
-      model_name TEXT,
-      storage TEXT,
-      color TEXT,
-      condition TEXT,
-      unlock_status TEXT,
-      purchase_date DATETIME NOT NULL,
-      purchase_price DECIMAL(10,2) NOT NULL,
-      sale_date DATETIME,
-      sale_price DECIMAL(10,2),
-      status TEXT NOT NULL DEFAULT 'in_stock',
-      vendor TEXT,
-      customer_name TEXT,
-      payment_method TEXT,
-      notes TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+  try {
+    const dbPath = getDatabasePath();
+    console.log('Initializing database at:', dbPath);
     
-    CREATE INDEX IF NOT EXISTS idx_imei1 ON phones(imei1);
-    CREATE INDEX IF NOT EXISTS idx_imei2 ON phones(imei2);
-    CREATE INDEX IF NOT EXISTS idx_status ON phones(status);
-  `);
-  
-  // Create Returns table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS returns (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      phone_id INTEGER NOT NULL,
-      return_date DATETIME NOT NULL,
-      return_reason TEXT NOT NULL,
-      refund_amount DECIMAL(10,2) NOT NULL,
-      notes TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (phone_id) REFERENCES phones(id)
-    );
+    // Ensure directory exists
+    const dbDir = path.dirname(dbPath);
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
     
-    CREATE INDEX IF NOT EXISTS idx_phone_id ON returns(phone_id);
-    CREATE INDEX IF NOT EXISTS idx_return_date ON returns(return_date);
-  `);
-  
+    db = new Database(dbPath);
+    
+    // Enable foreign keys
+    db.pragma('foreign_keys = ON');
+    
+    // Create Phones table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS phones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        imei1 TEXT NOT NULL,
+        imei2 TEXT,
+        model_name TEXT,
+        storage TEXT,
+        color TEXT,
+        condition TEXT,
+        unlock_status TEXT,
+        purchase_date DATETIME NOT NULL,
+        purchase_price DECIMAL(10,2) NOT NULL,
+        sale_date DATETIME,
+        sale_price DECIMAL(10,2),
+        status TEXT NOT NULL DEFAULT 'in_stock',
+        vendor TEXT,
+        customer_name TEXT,
+        payment_method TEXT,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_imei1 ON phones(imei1);
+      CREATE INDEX IF NOT EXISTS idx_imei2 ON phones(imei2);
+      CREATE INDEX IF NOT EXISTS idx_status ON phones(status);
+    `);
+    
+    // Create Returns table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS returns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        phone_id INTEGER NOT NULL,
+        return_date DATETIME NOT NULL,
+        return_reason TEXT NOT NULL,
+        refund_amount DECIMAL(10,2) NOT NULL,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (phone_id) REFERENCES phones(id)
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_phone_id ON returns(phone_id);
+      CREATE INDEX IF NOT EXISTS idx_return_date ON returns(return_date);
+    `);
+    
     console.log('Database initialized at:', dbPath);
   } catch (error: any) {
     console.error('Database initialization failed:', error);

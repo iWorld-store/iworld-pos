@@ -179,7 +179,7 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'iWorld Store API is running' });
 });
 
-// Serve static files from React build (in production/Electron)
+// Serve static files from React build (in production)
 // This must come AFTER all API routes
 const reactBuildPath = path.join(__dirname, '../dist/react');
 if (fs.existsSync(reactBuildPath)) {
@@ -193,6 +193,10 @@ if (fs.existsSync(reactBuildPath)) {
       res.status(404).json({ error: 'API endpoint not found' });
     }
   });
+} else {
+  // In development or if React build doesn't exist
+  console.warn('React build not found at:', reactBuildPath);
+  console.warn('Make sure to run "npm run build:react" before starting the server');
 }
 
 app.listen(PORT, () => {
