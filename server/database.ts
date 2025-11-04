@@ -32,7 +32,7 @@ export async function getAllPhones(filters?: {
     
     if (filters?.search) {
       const searchTerm = `%${filters.search}%`;
-      query = query.or(`imei1.ilike."${searchTerm}",imei2.ilike."${searchTerm}",model_name.ilike."${searchTerm}"`);
+      query = query.or(`imei1.ilike.${searchTerm},imei2.ilike.${searchTerm},model_name.ilike.${searchTerm}`);
     }
     
     if (filters?.status && filters.status !== 'all') {
