@@ -11,6 +11,7 @@
     "dev:react": "vite",
     "build": "npm run build:server && npm run build:react",
     "build:vercel": "npm run build:server && npm run build:react",
+    "build:railway": "npm run build:server && npm run build:react",
     "build:server": "tsc --project tsconfig.server.json",
     "build:react": "vite build",
     "build:electron": "tsc --project tsconfig.electron.json",
