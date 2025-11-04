@@ -23,8 +23,8 @@ app.use(express.json());
 // Initialize database
 initDatabase();
 
-// API Routes
-app.get('/api/phones', async (req, res) => {
+// API Routes (no /api prefix - Vercel handles that)
+app.get('/phones', async (req, res) => {
   try {
     const filters = {
       search: req.query.search as string | undefined,
@@ -37,7 +37,7 @@ app.get('/api/phones', async (req, res) => {
   }
 });
 
-app.get('/api/phones/imei/:imei', async (req, res) => {
+app.get('/phones/imei/:imei', async (req, res) => {
   try {
     const phone = getPhoneByImei(req.params.imei);
     if (!phone) {
@@ -49,7 +49,7 @@ app.get('/api/phones/imei/:imei', async (req, res) => {
   }
 });
 
-app.post('/api/phones', async (req, res) => {
+app.post('/phones', async (req, res) => {
   try {
     const result = addPhone(req.body);
     if (!result.success) {
@@ -61,7 +61,7 @@ app.post('/api/phones', async (req, res) => {
   }
 });
 
-app.put('/api/phones/:id', async (req, res) => {
+app.put('/phones/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const result = updatePhone(id, req.body);
@@ -74,7 +74,7 @@ app.put('/api/phones/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/phones/:id', async (req, res) => {
+app.delete('/phones/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const result = deletePhone(id);
@@ -87,7 +87,7 @@ app.delete('/api/phones/:id', async (req, res) => {
   }
 });
 
-app.post('/api/phones/:id/sell', async (req, res) => {
+app.post('/phones/:id/sell', async (req, res) => {
   try {
     const phoneId = parseInt(req.params.id);
     const result = sellPhone(phoneId, req.body);
@@ -100,7 +100,7 @@ app.post('/api/phones/:id/sell', async (req, res) => {
   }
 });
 
-app.post('/api/phones/:id/return', async (req, res) => {
+app.post('/phones/:id/return', async (req, res) => {
   try {
     const phoneId = parseInt(req.params.id);
     const result = processReturn(phoneId, req.body);
@@ -113,7 +113,7 @@ app.post('/api/phones/:id/return', async (req, res) => {
   }
 });
 
-app.get('/api/returns', async (_req, res) => {
+app.get('/returns', async (_req, res) => {
   try {
     const returns = getAllReturns();
     res.json(returns);
@@ -122,7 +122,7 @@ app.get('/api/returns', async (_req, res) => {
   }
 });
 
-app.post('/api/reports/profit', async (req, res) => {
+app.post('/reports/profit', async (req, res) => {
   try {
     const report = getProfitReport(req.body);
     res.json(report);
@@ -131,7 +131,7 @@ app.post('/api/reports/profit', async (req, res) => {
   }
 });
 
-app.get('/api/reports/inventory', async (_req, res) => {
+app.get('/reports/inventory', async (_req, res) => {
   try {
     const report = getInventoryReport();
     res.json(report);
@@ -140,7 +140,7 @@ app.get('/api/reports/inventory', async (_req, res) => {
   }
 });
 
-app.post('/api/export/csv', async (req, res) => {
+app.post('/export/csv', async (req, res) => {
   try {
     const { data, filename } = req.body;
     const result = await exportToCSV(data, filename);
@@ -153,7 +153,7 @@ app.post('/api/export/csv', async (req, res) => {
   }
 });
 
-app.post('/api/export/excel', async (req, res) => {
+app.post('/export/excel', async (req, res) => {
   try {
     const { data, filename } = req.body;
     const result = await exportToExcel(data, filename);
@@ -166,12 +166,10 @@ app.post('/api/export/excel', async (req, res) => {
   }
 });
 
-app.get('/api/health', (_req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', message: 'iWorld Store API is running' });
 });
 
-// Vercel serverless function handler
-export default function handler(req: any, res: any) {
-  return app(req, res);
-}
+// Export Express app for Vercel
+export default app;
 
