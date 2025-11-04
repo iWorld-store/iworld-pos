@@ -6,14 +6,37 @@ import * as os from 'os';
 let db: Database.Database | null = null;
 
 function getDatabasePath(): string {
-  // For Vercel/serverless: Use /tmp (writable directory)
-  // For local development: Use user's home directory
+  // For Vercel/serverless: Use /tmp (writable directory, but data won't persist!)
   const isVercel = process.env.VERCEL || process.env.VERCEL_ENV;
   
   if (isVercel) {
     // Vercel serverless: Use /tmp (note: data won't persist across deployments!)
+    // SQLite doesn't work well on Vercel anyway due to native module issues
     const dbDir = '/tmp';
     return path.join(dbDir, 'database.db');
+  }
+  
+  // For Railway: Use project root (persistent storage)
+  // Railway has persistent volumes, so data will persist
+  const isRailway = process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY;
+  
+  if (isRailway) {
+    // Railway: Use project root for persistent storage
+    const dbDir = process.cwd();
+    const dataDir = path.join(dbDir, 'data');
+    
+    // Create data directory if it doesn't exist
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    
+    // Create backups directory
+    const backupsDir = path.join(dataDir, 'backups');
+    if (!fs.existsSync(backupsDir)) {
+      fs.mkdirSync(backupsDir, { recursive: true });
+    }
+    
+    return path.join(dataDir, 'database.db');
   }
   
   // Local development: Use user's home directory
