@@ -1,120 +1,32 @@
 {
-  "name": "iworld-store",
+  "name": "iphone-pos-system",
   "version": "1.0.0",
-  "description": "POS Software for iWorld Store - Phone Inventory Management",
-  "main": "dist/electron/main.js",
+  "private": true,
   "scripts": {
-    "dev": "concurrently -n \"server,react\" -c \"green,blue\" \"npm run dev:server:watch\" \"npm run dev:react\"",
-    "dev:electron": "npm run build:electron && electron dist/electron/main.js",
-    "dev:server": "tsc --project tsconfig.server.json && node dist/server/index.js",
-    "dev:server:watch": "npm run build:server && nodemon --watch server --exec \"tsc --project tsconfig.server.json && node dist/server/index.js\"",
-    "dev:react": "vite",
-    "build": "npm run build:server && npm run build:react",
-    "build:vercel": "npm run build:server && npm run build:react",
-    "build:railway": "npm run build:server && npm run build:react",
-    "postinstall": "npm run build:server && npm run build:react",
-    "build:server": "tsc --project tsconfig.server.json",
-    "build:react": "vite build",
-    "build:electron": "tsc --project tsconfig.electron.json",
-    "start": "node dist/server/index.js",
-    "package": "npm run build && electron-builder",
-    "package:win": "npm run build && electron-builder --win",
-    "package:mac": "npm run build && electron-builder --mac",
-    "package:linux": "npm run build && electron-builder --linux",
-    "package:all": "npm run build && electron-builder --win --mac --linux"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
-  "keywords": [
-    "pos",
-    "inventory",
-    "electron"
-  ],
-  "author": "iWorld Store",
-  "license": "MIT",
   "dependencies": {
-    "@emotion/react": "^11.11.3",
-    "@emotion/styled": "^11.11.0",
-    "@mui/icons-material": "^5.15.0",
-    "@mui/material": "^5.15.0",
-    "@supabase/supabase-js": "^2.79.0",
-    "cors": "^2.8.5",
-    "csv-writer": "^1.6.0",
-    "exceljs": "^4.4.0",
-    "express": "^5.1.0",
+    "next": "^14.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-hook-form": "^7.50.0",
-    "react-router-dom": "^6.22.0"
+    "dexie": "^3.2.4",
+    "date-fns": "^2.30.0",
+    "xlsx": "^0.18.5",
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.5",
-    "@types/node": "^20.11.0",
-    "@types/react": "^18.2.55",
-    "@types/react-dom": "^18.2.19",
-    "@vercel/node": "^5.5.4",
-    "@vitejs/plugin-react": "^4.2.1",
-    "concurrently": "^8.2.2",
-    "electron": "^38.3.0",
-    "electron-builder": "^24.9.1",
-    "nodemon": "^3.1.10",
+    "@types/node": "^20.10.6",
+    "@types/react": "^18.2.46",
+    "@types/react-dom": "^18.2.18",
     "typescript": "^5.3.3",
-    "vite": "^7.1.12",
-    "wait-on": "^8.0.5"
-  },
-  "build": {
-    "appId": "com.iworldstore.pos",
-    "productName": "iWorld Store POS",
-    "directories": {
-      "output": "release",
-      "buildResources": "build"
-    },
-    "files": [
-      "dist/**/*",
-      "package.json",
-      "!dist/electron/**/*.map",
-      "!dist/server/**/*.map",
-      "!dist/react/**/*.map"
-    ],
-    "extraResources": [
-      {
-        "from": "dist/server",
-        "to": "server",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
-    "win": {
-      "target": [
-        "nsis"
-      ],
-      "icon": "build/icon.ico"
-    },
-    "mac": {
-      "target": [
-        "dmg"
-      ],
-      "category": "public.app-category.business",
-      "icon": "build/icon.icns"
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "category": "Office",
-      "icon": "build/icon.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    },
-    "dmg": {
-      "title": "iWorld Store POS",
-      "background": "build/dmg-background.png",
-      "icon": "build/icon.icns"
-    }
+    "tailwindcss": "^3.4.0",
+    "postcss": "^8.4.32",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.0.4"
   }
 }
+

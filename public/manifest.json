@@ -1,0 +1,11 @@
+{
+  "name": "iPhone POS System",
+  "short_name": "Phone POS",
+  "description": "Phone inventory and sales management system",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": []
+}
