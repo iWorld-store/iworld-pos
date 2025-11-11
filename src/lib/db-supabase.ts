@@ -565,7 +565,8 @@ export const phoneDB = {
       .single();
 
     if (error) throw error;
-    return data.id;
+    if (!data) throw new Error('Failed to insert credit');
+    return (data as any).id as number;
   },
 
   async getAllCredits(): Promise<Credit[]> {
