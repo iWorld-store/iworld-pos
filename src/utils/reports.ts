@@ -5,6 +5,10 @@ export interface ReportData {
   currentStockValue: number;
   totalProfit: number;
   netProfit: number;
+  refundLosses: number;
+  tradeInValue: number;
+  resaleProfit: number;
+  resaleCount: number;
   todaySales: {
     count: number;
     revenue: number;
@@ -44,11 +48,51 @@ export function calculateReports(
   // Total profit from sales
   const totalProfit = sales.reduce((sum, sale) => sum + sale.profit, 0);
 
-  // Total returns (loss from returns)
-  const totalReturns = returns.reduce((sum, ret) => sum + ret.returnPrice, 0);
+  // Separate returns by type (default to 'refund' for backward compatibility)
+  const refunds = returns.filter(r => !r.returnType || r.returnType === 'refund');
+  const tradeIns = returns.filter(r => r.returnType === 'trade_in');
+  const exchanges = returns.filter(r => r.returnType === 'exchange');
 
-  // Net profit
-  const netProfit = totalProfit - totalReturns;
+  // Refund losses (actual money lost from refunds)
+  const refundLosses = refunds.reduce((sum, ret) => sum + ret.returnPrice, 0);
+  
+  // Exchange losses (treated same as refunds - actual money lost)
+  const exchangeLosses = exchanges.reduce((sum, ret) => sum + ret.returnPrice, 0);
+  
+  // Total actual losses (refunds + exchanges)
+  const totalRefundLosses = refundLosses + exchangeLosses;
+
+  // Trade-in value (buyback cost, not a loss - phone can be resold)
+  const tradeInValue = tradeIns.reduce((sum, ret) => sum + ret.returnPrice, 0);
+
+  // Find resale sales using the explicit isResale flag (more accurate)
+  // Fallback to heuristic method for backward compatibility
+  const resaleSales = sales.filter(sale => {
+    if (sale.isResale) {
+      return true; // Explicitly marked as resale
+    }
+    // Fallback: check if phone was previously returned (for old data)
+    const returnedPhoneIds = returns.map(r => r.phoneId);
+    return returnedPhoneIds.includes(sale.phoneId);
+  });
+
+  // Calculate profit from reselling returned phones
+  // Profit = salePrice - newPrice (what we paid for buyback)
+  let resaleProfit = 0;
+  resaleSales.forEach(sale => {
+    const phone = phones.find(p => p.id === sale.phoneId);
+    if (phone) {
+      // Profit = salePrice - purchasePrice (newPrice from return is now purchasePrice)
+      const profit = sale.salePrice - phone.purchasePrice;
+      resaleProfit += profit;
+    }
+  });
+
+  const resaleCount = resaleSales.length;
+
+  // Net profit = total profit - refund losses + resale profit
+  // Note: Trade-ins are not losses, they're buybacks that can generate profit on resale
+  const netProfit = totalProfit - totalRefundLosses + resaleProfit;
 
   // Today's sales
   const todaySalesList = sales.filter(sale => sale.saleDate === today);
@@ -148,6 +192,10 @@ export function calculateReports(
     currentStockValue,
     totalProfit,
     netProfit,
+    refundLosses: totalRefundLosses, // Total actual losses (refunds + exchanges)
+    tradeInValue, // Buyback value (not a loss)
+    resaleProfit, // Profit from reselling returned phones
+    resaleCount, // Number of resale transactions
     todaySales,
     bestSellingModels,
     averageProfitPerPhone,

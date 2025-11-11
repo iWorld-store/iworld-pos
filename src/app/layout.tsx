@@ -10,13 +10,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'iPhone POS System',
+  title: 'iWorld Store',
   description: 'Phone inventory and sales management system',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'iPhone POS',
+    title: 'iWorld Store',
   },
   other: {
     'mobile-web-app-capable': 'yes',

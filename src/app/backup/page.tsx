@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { exportBackup, importBackup } from '@/utils/backup';
-import { phoneDB } from '@/lib/db';
+import { phoneDB } from '@/lib/db-supabase';
 
 export default function BackupPage() {
   const [backupMessage, setBackupMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
-import { phoneDB } from '@/lib/db';
+import { phoneDB } from '@/lib/db-supabase';
 import { calculateReports } from '@/utils/reports';
 import { exportToCSV, exportToExcel } from '@/utils/export';
 import { Phone, Sale, Return } from '@/types';
@@ -97,6 +97,47 @@ export default function Reports() {
             icon="📈"
             color="blue"
           />
+        </div>
+
+        {/* Return Metrics */}
+        <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+          <h2 className="text-xl font-semibold mb-4">Return Analysis</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-4">
+              <p className="text-gray-400 text-sm mb-1">Refund Losses</p>
+              <p className="text-2xl font-bold text-red-400">
+                {reports.refundLosses.toLocaleString('en-PK')} PKR
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Actual money lost from refunds & exchanges</p>
+            </div>
+            <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4">
+              <p className="text-gray-400 text-sm mb-1">Trade-In Value</p>
+              <p className="text-2xl font-bold text-blue-400">
+                {reports.tradeInValue.toLocaleString('en-PK')} PKR
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Buyback cost (not a loss - can be resold)</p>
+            </div>
+            <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-4">
+              <p className="text-gray-400 text-sm mb-1">Resale Profit</p>
+              <p className="text-2xl font-bold text-green-400">
+                {reports.resaleProfit.toLocaleString('en-PK')} PKR
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Profit from reselling returned phones</p>
+            </div>
+            <div className="bg-purple-900/20 border border-purple-700/50 rounded-lg p-4">
+              <p className="text-gray-400 text-sm mb-1">Resale Count</p>
+              <p className="text-2xl font-bold text-purple-400">
+                {reports.resaleCount || 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Number of phones resold after return</p>
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-gray-800 rounded-lg border border-gray-700">
+            <p className="text-xs text-gray-400">
+              <strong>Note:</strong> Net Profit = Total Profit - Refund Losses + Resale Profit. 
+              Trade-ins are buybacks that can generate profit when resold, so they're not counted as losses.
+            </p>
+          </div>
         </div>
 
         {/* Profit by Period */}

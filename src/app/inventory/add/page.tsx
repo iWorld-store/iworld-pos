@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
-import { phoneDB } from '@/lib/db';
+import { phoneDB } from '@/lib/db-supabase';
 import { getTodayDate } from '@/utils/date';
 import { Phone, PhoneCondition, UnlockStatus } from '@/types';
 

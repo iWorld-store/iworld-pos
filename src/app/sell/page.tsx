@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
-import { phoneDB } from '@/lib/db';
+import { phoneDB } from '@/lib/db-supabase';
 import { getTodayDate, generateReceiptNumber } from '@/utils/date';
 import { Phone, PaymentMethod } from '@/types';
 
@@ -180,7 +180,7 @@ export default function SellPhone() {
         imei: phone.imei1 + (phone.imei2 ? ` / ${phone.imei2}` : ''),
         salePrice,
         customerName: formData.customerName || 'N/A',
-        storeName: 'iPhone POS System',
+        storeName: 'iWorld Store',
       };
 
       setReceiptData(receipt);
@@ -227,7 +227,7 @@ export default function SellPhone() {
           receivedAmount: received,
           remainingAmount: remaining,
           customerName: formData.customerName,
-          storeName: 'iPhone POS System',
+          storeName: 'iWorld Store',
           isCredit: true,
         };
 
@@ -314,6 +314,11 @@ export default function SellPhone() {
               font-weight: bold;
               margin-top: 20px;
             }
+            .promotion {
+              font-size: 10px;
+              color: #666;
+              margin-top: 10px;
+            }
           </style>
         </head>
         <body>
@@ -328,10 +333,11 @@ export default function SellPhone() {
             <div><strong>IMEI:</strong> ${receiptData.imei}</div>
             <div><strong>Customer:</strong> ${receiptData.customerName}</div>
             ${creditSection}
-            <div class="total">Total: ${receiptData.salePrice.toLocaleString('en-PK')} PKR</div>
+            ${!receiptData.isCredit ? `<div class="total">Total: ${receiptData.salePrice.toLocaleString('en-PK')} PKR</div>` : ''}
           </div>
           <div class="footer">
             <p>Thank you for your purchase!</p>
+            <p class="promotion">Software by Nabeel; 03443814208</p>
           </div>
         </body>
       </html>

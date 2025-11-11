@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authService } from '@/lib/auth';
+import { authService } from '@/lib/auth-supabase';
 import LoginPage from '@/components/LoginPage';
 
 export default function Home() {
@@ -11,13 +11,22 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (authService.isAuthenticated()) {
-      setIsAuthenticated(true);
-      router.push('/dashboard');
-    } else {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const authenticated = await authService.isAuthenticated();
+      setIsAuthenticated(authenticated);
+      if (authenticated) {
+        router.push('/dashboard');
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+    } finally {
       setLoading(false);
     }
-  }, [router]);
+  };
 
   if (loading) {
     return (

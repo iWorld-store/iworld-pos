@@ -2,6 +2,7 @@ export type PhoneCondition = 'Boxpack' | '10/10' | 'Average';
 export type UnlockStatus = 'JV' | 'Factory Unlocked' | 'PTA';
 export type PhoneStatus = 'in_stock' | 'sold';
 export type PaymentMethod = 'Cash' | 'Card' | 'Bank Transfer' | 'Other';
+export type ReturnType = 'refund' | 'trade_in' | 'exchange';
 
 export interface Phone {
   id?: number;
@@ -42,6 +43,8 @@ export interface Sale {
   isCredit?: boolean; // true if sold on credit
   creditReceived?: number; // amount received for credit sale
   creditRemaining?: number; // remaining amount to be paid
+  isResale?: boolean; // true if this is a resale of a returned phone
+  originalReturnId?: number; // ID of the return record if this is a resale
   createdAt?: string;
 }
 
@@ -55,15 +58,25 @@ export interface Credit {
   remainingAmount: number;
   saleDate: string;
   paymentMethod?: PaymentMethod;
-  status: 'pending' | 'paid'; // pending = not fully paid, paid = fully paid
+  status: 'pending' | 'paid' | 'cancelled'; // pending = not fully paid, paid = fully paid, cancelled = phone returned
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface CreditPayment {
+  id?: number;
+  creditId: number;
+  amount: number;
+  paymentDate: string; // DD/MM/YYYY format
+  paymentMethod?: PaymentMethod;
+  createdAt?: string;
 }
 
 export interface Return {
   id?: number;
   saleId: number;
   phoneId: number;
+  returnType?: ReturnType; // 'refund' = customer changed mind, 'trade_in' = buyback/upgrade, 'exchange' = exchange for different phone
   returnPrice: number;
   newPrice: number;
   returnReason?: string;
@@ -76,6 +89,7 @@ export interface BackupData {
   sales: Sale[];
   returns: Return[];
   credits?: Credit[];
+  creditPayments?: CreditPayment[];
   exportDate: string;
   version: string;
 }
@@ -84,6 +98,9 @@ export interface ReportData {
   currentStockValue: number;
   totalProfit: number;
   netProfit: number;
+  refundLosses: number; // Actual losses from refunds (money lost)
+  tradeInValue: number; // Value of trade-ins (buyback cost, not a loss)
+  resaleProfit: number; // Profit from reselling returned phones
   todaySales: {
     count: number;
     revenue: number;
@@ -96,5 +113,9 @@ export interface ReportData {
   }>;
   averageProfitPerPhone: number;
   inventoryTurnover: number;
+  dailyProfit: number;
+  weeklyProfit: number;
+  monthlyProfit: number;
+  yearlyProfit: number;
 }
 

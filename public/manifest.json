@@ -1,6 +1,6 @@
 {
-  "name": "iPhone POS System",
-  "short_name": "Phone POS",
+  "name": "iWorld Store",
+  "short_name": "iWorld Store",
   "description": "Phone inventory and sales management system",
   "start_url": "/",
   "display": "standalone",

@@ -2,22 +2,32 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authService } from '@/lib/auth';
+import { authService } from '@/lib/auth-supabase';
 
 export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
-    if (authService.login(password, rememberMe)) {
-      router.push('/dashboard');
-    } else {
-      setError('Incorrect password');
+    try {
+      const result = await authService.loginWithPassword(password, rememberMe);
+      if (result.success) {
+        router.push('/dashboard');
+        router.refresh(); // Refresh to update auth state
+      } else {
+        setError(result.error || 'Incorrect password');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -26,7 +36,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-gray-900 rounded-lg shadow-xl p-8 border border-gray-800">
           <h1 className="text-3xl font-bold text-center mb-2 text-white">
-            iPhone POS System
+            iWorld Store
           </h1>
           <p className="text-gray-400 text-center mb-8">Enter password to continue</p>
           
@@ -83,9 +93,10 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full bg-accent-blue hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-gray-900"
+              disabled={loading}
+              className="w-full bg-accent-blue hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent-blue focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Login
+              {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
         </div>

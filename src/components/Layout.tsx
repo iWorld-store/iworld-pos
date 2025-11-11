@@ -1,8 +1,8 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
-import { authService } from '@/lib/auth';
+import { useEffect, useState } from 'react';
+import { authService } from '@/lib/auth-supabase';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,18 +11,45 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      router.push('/');
-      return;
-    }
-  }, [router]);
+    checkAuth();
+  }, []);
 
-  const handleLogout = () => {
-    authService.logout();
-    router.push('/');
+  const checkAuth = async () => {
+    try {
+      const authenticated = await authService.isAuthenticated();
+      setIsAuthenticated(authenticated);
+      if (!authenticated && pathname !== '/') {
+        router.push('/');
+      }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      router.push('/');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleLogout = async () => {
+    await authService.signOut();
+    router.push('/');
+    router.refresh();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div>Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated && pathname !== '/') {
+    return null;
+  }
 
   const navItems = [
     { path: '/dashboard', label: 'Dashboard' },
@@ -36,10 +63,17 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-black text-white">
+      {/* Brand Header */}
+      <div className="bg-black border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <h1 className="text-2xl font-bold text-center text-white">iWorld Store</h1>
+        </div>
+      </div>
+
       {/* Navigation */}
       <nav className="bg-gray-900 border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex space-x-1 overflow-x-auto">
+          <div className="flex items-center justify-center space-x-1 overflow-x-auto">
             {navItems.map((item) => (
               <button
                 key={item.path}
@@ -55,7 +89,7 @@ export default function Layout({ children }: LayoutProps) {
             ))}
             <button
               onClick={handleLogout}
-              className="ml-auto px-4 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800"
+              className="px-4 py-3 text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800"
             >
               Logout
             </button>

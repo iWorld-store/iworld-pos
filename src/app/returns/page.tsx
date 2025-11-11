@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/Layout';
-import { phoneDB } from '@/lib/db';
+import { phoneDB } from '@/lib/db-supabase';
 import { getTodayDate } from '@/utils/date';
-import { Phone, Sale } from '@/types';
+import { Phone, Sale, ReturnType } from '@/types';
 
 export default function Returns() {
   const router = useRouter();
@@ -14,6 +14,7 @@ export default function Returns() {
   const [phone, setPhone] = useState<Phone | null>(null);
   const [sale, setSale] = useState<Sale | null>(null);
   const [formData, setFormData] = useState({
+    returnType: 'refund' as ReturnType,
     returnPrice: '',
     newPrice: '',
     returnReason: '',
@@ -101,6 +102,7 @@ export default function Returns() {
       await phoneDB.addReturn({
         saleId: sale.id!,
         phoneId: phone.id!,
+        returnType: formData.returnType,
         returnPrice,
         newPrice,
         returnReason: formData.returnReason.trim() || undefined,
@@ -114,6 +116,7 @@ export default function Returns() {
       setPhone(null);
       setSale(null);
       setFormData({
+        returnType: 'refund',
         returnPrice: '',
         newPrice: '',
         returnReason: '',
@@ -189,10 +192,69 @@ export default function Returns() {
 
           {phone && sale && (
             <>
+              {/* Return Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Return Type <span className="text-red-400">*</span>
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, returnType: 'refund' }))}
+                    className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                      formData.returnType === 'refund'
+                        ? 'bg-red-600 text-white border-2 border-red-400'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border-2 border-gray-700'
+                    }`}
+                  >
+                    🔄 Refund
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, returnType: 'trade_in' }))}
+                    className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                      formData.returnType === 'trade_in'
+                        ? 'bg-blue-600 text-white border-2 border-blue-400'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border-2 border-gray-700'
+                    }`}
+                  >
+                    🔄 Trade-In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, returnType: 'exchange' }))}
+                    className={`px-4 py-3 rounded-lg font-semibold transition-colors ${
+                      formData.returnType === 'exchange'
+                        ? 'bg-purple-600 text-white border-2 border-purple-400'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border-2 border-gray-700'
+                    }`}
+                  >
+                    🔄 Exchange
+                  </button>
+                </div>
+                <div className="mt-2 p-3 bg-gray-800 rounded-lg border border-gray-700">
+                  <p className="text-xs text-gray-400">
+                    {formData.returnType === 'refund' && (
+                      <>🔄 <strong>Refund:</strong> Customer changed mind, fault, or didn't like the phone. Usually full or partial refund.</>
+                    )}
+                    {formData.returnType === 'trade_in' && (
+                      <>🔄 <strong>Trade-In:</strong> Customer upgrading or selling phone for cash after using it. Buyback scenario.</>
+                    )}
+                    {formData.returnType === 'exchange' && (
+                      <>🔄 <strong>Exchange:</strong> Customer exchanging for a different phone model or variant.</>
+                    )}
+                  </p>
+                </div>
+              </div>
+
               {/* Return Price */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Return Price (Refund Amount) (PKR) <span className="text-red-400">*</span>
+                  {formData.returnType === 'refund' 
+                    ? 'Return Price (Refund Amount) (PKR)' 
+                    : formData.returnType === 'trade_in'
+                    ? 'Buyback Price (PKR)'
+                    : 'Exchange Value (PKR)'} <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="number"
@@ -205,7 +267,11 @@ export default function Returns() {
                   required
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Amount to refund to customer
+                  {formData.returnType === 'refund' 
+                    ? 'Amount to refund to customer'
+                    : formData.returnType === 'trade_in'
+                    ? 'Amount paid to customer for buyback'
+                    : 'Value given to customer for exchange'}
                 </p>
               </div>
 
