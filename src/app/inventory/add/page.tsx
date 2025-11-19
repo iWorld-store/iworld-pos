@@ -32,6 +32,21 @@ export default function AddInventory() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [isTradeIn, setIsTradeIn] = useState(false);
+
+  // Check if coming from trade-in sale
+  useEffect(() => {
+    const tradeInValue = sessionStorage.getItem('tradeInValue');
+    const returnToSell = sessionStorage.getItem('returnToSell');
+    
+    if (tradeInValue && returnToSell === 'true') {
+      setIsTradeIn(true);
+      setFormData(prev => ({
+        ...prev,
+        purchasePrice: tradeInValue,
+      }));
+    }
+  }, []);
 
   // Handle barcode scanner input (IMEI scanning)
   useEffect(() => {
@@ -81,6 +96,11 @@ export default function AddInventory() {
     setError('');
     setSuccess(false);
 
+    // Prevent duplicate submissions
+    if (loading) {
+      return;
+    }
+
     // Validation
     if (!formData.imei1.trim()) {
       setError('IMEI1 is required');
@@ -99,21 +119,22 @@ export default function AddInventory() {
       return;
     }
 
-    // Check for duplicate IMEI
-    const existingPhones = await phoneDB.getAllPhones();
-    const duplicate = existingPhones.find(
-      p => p.imei1 === formData.imei1 || p.imei2 === formData.imei1 ||
-           (formData.imei2 && (p.imei1 === formData.imei2 || p.imei2 === formData.imei2))
-    );
-
-    if (duplicate) {
-      setError('Phone with this IMEI already exists in inventory');
-      return;
-    }
-
     setLoading(true);
 
     try {
+      // Check for duplicate IMEI
+      const existingPhones = await phoneDB.getAllPhones();
+      const duplicate = existingPhones.find(
+        p => p.imei1 === formData.imei1 || p.imei2 === formData.imei1 ||
+             (formData.imei2 && (p.imei1 === formData.imei2 || p.imei2 === formData.imei2))
+      );
+
+      if (duplicate) {
+        setError('Phone with this IMEI already exists in inventory');
+        setLoading(false);
+        return;
+      }
+
       const phone: Omit<Phone, 'id'> = {
         imei1: formData.imei1.trim(),
         imei2: formData.imei2.trim() || undefined,
@@ -128,10 +149,23 @@ export default function AddInventory() {
         saleDate: 'N/A',
         status: 'in_stock',
         vendor: formData.vendor.trim() || undefined,
+        isTradeIn: isTradeIn,
         notes: formData.notes.trim() || undefined,
       };
 
-      await phoneDB.addPhone(phone);
+      const phoneId = await phoneDB.addPhone(phone);
+
+      // If coming from trade-in sale, redirect back to sell page immediately
+      const returnToSell = sessionStorage.getItem('returnToSell');
+      if (returnToSell === 'true') {
+        // Clear only the trade-in value, keep other session data for restoration
+        sessionStorage.removeItem('tradeInValue');
+        // Redirect to sell page with phone ID (don't show success message, redirect immediately)
+        router.replace(`/sell?tradeInPhoneId=${phoneId}`);
+        return;
+      }
+
+      // Only show success message if NOT redirecting
       setSuccess(true);
 
       // Reset form
@@ -152,9 +186,16 @@ export default function AddInventory() {
 
       // Focus back on IMEI1 for next scan
       setTimeout(() => imei1Ref.current?.focus(), 100);
-    } catch (err) {
-      setError('Failed to add phone to inventory');
-      console.error(err);
+    } catch (err: any) {
+      console.error('Error adding phone:', err);
+      // Show more detailed error message
+      if (err?.message) {
+        setError(`Failed to add phone: ${err.message}`);
+      } else if (err?.code) {
+        setError(`Database error (${err.code}): ${err.message || 'Please check your database schema'}`);
+      } else {
+        setError('Failed to add phone to inventory. Please check the console for details.');
+      }
     } finally {
       setLoading(false);
     }
@@ -164,6 +205,13 @@ export default function AddInventory() {
     <Layout>
       <div className="w-full max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Add to Inventory</h1>
+
+        {isTradeIn && (
+          <div className="bg-purple-900/50 border border-purple-700 text-purple-200 px-4 py-3 rounded-lg mb-6">
+            <p className="font-semibold">🔄 Trade-In Phone</p>
+            <p className="text-sm mt-1">Purchase price has been pre-filled with trade-in value. Complete the form and return to complete the sale.</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="bg-gray-900 rounded-lg p-6 border border-gray-800 space-y-6">
           {/* IMEI Fields - Side by Side */}

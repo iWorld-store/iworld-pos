@@ -25,6 +25,7 @@ function mapPhoneFromDB(row: any): Phone {
     isCredit: row.is_credit || false,
     creditReceived: row.credit_received ? parseFloat(row.credit_received) : undefined,
     creditRemaining: row.credit_remaining ? parseFloat(row.credit_remaining) : undefined,
+    isTradeIn: row.is_trade_in || false,
     notes: row.notes || undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -54,6 +55,11 @@ function mapPhoneToDB(phone: Omit<Phone, 'id'> | Partial<Phone>): any {
   if (phone.isCredit !== undefined) result.is_credit = phone.isCredit || false;
   if (phone.creditReceived !== undefined) result.credit_received = phone.creditReceived || null;
   if (phone.creditRemaining !== undefined) result.credit_remaining = phone.creditRemaining || null;
+  // Only include is_trade_in if it's explicitly set (not undefined)
+  // This prevents errors if the column doesn't exist yet
+  if (phone.isTradeIn !== undefined) {
+    result.is_trade_in = phone.isTradeIn;
+  }
   if (phone.notes !== undefined) result.notes = phone.notes || null;
   return result;
 }
@@ -74,13 +80,16 @@ function mapSaleFromDB(row: any): Sale {
     creditRemaining: row.credit_remaining ? parseFloat(row.credit_remaining) : undefined,
     isResale: row.is_resale || false,
     originalReturnId: row.original_return_id || undefined,
+    isTradeIn: row.is_trade_in || false,
+    tradeInValue: row.trade_in_value ? parseFloat(row.trade_in_value) : undefined,
+    tradeInPhoneId: row.trade_in_phone_id || undefined,
     createdAt: row.created_at,
   };
 }
 
 // Helper function to map Sale to database row
 function mapSaleToDB(sale: Omit<Sale, 'id'>): any {
-  return {
+  const result: any = {
     phone_id: sale.phoneId,
     sale_price: sale.salePrice,
     sale_date: sale.saleDate,
@@ -94,6 +103,19 @@ function mapSaleToDB(sale: Omit<Sale, 'id'>): any {
     is_resale: sale.isResale || false,
     original_return_id: sale.originalReturnId || null,
   };
+
+  // Only include trade-in fields if it's a trade-in sale
+  if (sale.isTradeIn !== undefined) {
+    result.is_trade_in = sale.isTradeIn;
+  }
+  if (sale.tradeInValue !== undefined) {
+    result.trade_in_value = sale.tradeInValue || null;
+  }
+  if (sale.tradeInPhoneId !== undefined) {
+    result.trade_in_phone_id = sale.tradeInPhoneId || null;
+  }
+
+  return result;
 }
 
 // Helper function to map database row to Return
@@ -161,13 +183,26 @@ export const phoneDB = {
     const phoneData = mapPhoneToDB(phone);
     phoneData.user_id = userId;
 
+    // Log the data being sent for debugging (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Inserting phone data:', phoneData);
+    }
+
     const { data, error } = await supabase
       .from('phones')
       .insert(phoneData)
       .select('id')
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+      throw error;
+    }
     if (!data) throw new Error('Failed to insert phone');
     return (data as any).id as number;
   },
@@ -197,6 +232,7 @@ export const phoneDB = {
     if (updates.isCredit !== undefined) updateData.is_credit = updates.isCredit;
     if (updates.creditReceived !== undefined) updateData.credit_received = updates.creditReceived || null;
     if (updates.creditRemaining !== undefined) updateData.credit_remaining = updates.creditRemaining || null;
+    if (updates.isTradeIn !== undefined) updateData.is_trade_in = updates.isTradeIn;
     if (updates.notes !== undefined) updateData.notes = updates.notes || null;
 
     const { error } = await (supabase as any)
@@ -334,29 +370,53 @@ export const phoneDB = {
     });
     saleData.user_id = userId;
 
+    // Log the data being sent for debugging (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Inserting sale data:', saleData);
+    }
+
     const { data, error } = await supabase
       .from('sales')
       .insert(saleData)
       .select('id')
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase sale error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        saleData: saleData,
+      });
+      throw error;
+    }
     if (!data) throw new Error('Failed to insert sale');
 
-    // Update phone status
-    await this.updatePhone(sale.phoneId, {
-      status: 'sold',
-      saleDate: sale.saleDate,
-      salePrice: sale.salePrice,
-      receiptNumber: sale.receiptNumber,
-      customerName: sale.customerName,
-      paymentMethod: sale.paymentMethod,
-      isCredit: sale.isCredit,
-      creditReceived: sale.creditReceived,
-      creditRemaining: sale.creditRemaining,
-    });
+    const saleId = (data as any).id as number;
 
-    return (data as any).id as number;
+    // Update phone status - CRITICAL: This marks the phone as sold
+    try {
+      await this.updatePhone(sale.phoneId, {
+        status: 'sold',
+        saleDate: sale.saleDate,
+        salePrice: sale.salePrice,
+        receiptNumber: sale.receiptNumber,
+        customerName: sale.customerName,
+        paymentMethod: sale.paymentMethod,
+        isCredit: sale.isCredit,
+        creditReceived: sale.creditReceived,
+        creditRemaining: sale.creditRemaining,
+      });
+    } catch (updateError) {
+      // Log error but don't fail the sale - sale is already created
+      console.error('Error updating phone status to sold:', updateError);
+      // Try to delete the sale record if phone update fails (optional - you may want to keep the sale)
+      // await supabase.from('sales').delete().eq('id', saleId);
+      throw new Error(`Sale created but failed to update phone status: ${updateError instanceof Error ? updateError.message : 'Unknown error'}`);
+    }
+
+    return saleId;
   },
 
   async getAllSales(): Promise<Sale[]> {

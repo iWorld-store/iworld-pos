@@ -7,6 +7,7 @@ export interface ReportData {
   netProfit: number;
   refundLosses: number;
   tradeInValue: number;
+  tradeInExcess: number; // Excess trade-in value when trade-in > sale price (subtracted from profit)
   resaleProfit: number;
   resaleCount: number;
   todaySales: {
@@ -90,9 +91,20 @@ export function calculateReports(
 
   const resaleCount = resaleSales.length;
 
-  // Net profit = total profit - refund losses + resale profit
+  // Calculate trade-in excess (when trade-in value > sale price)
+  // This represents money given to customer beyond sale price
+  const tradeInSales = sales.filter(sale => sale.isTradeIn && sale.tradeInValue);
+  let tradeInExcess = 0;
+  tradeInSales.forEach(sale => {
+    if (sale.tradeInValue && sale.tradeInValue > sale.salePrice) {
+      tradeInExcess += (sale.tradeInValue - sale.salePrice);
+    }
+  });
+
+  // Net profit = total profit - refund losses + resale profit - trade-in excess
   // Note: Trade-ins are not losses, they're buybacks that can generate profit on resale
-  const netProfit = totalProfit - totalRefundLosses + resaleProfit;
+  // But if trade-in value exceeds sale price, that excess is subtracted from profit
+  const netProfit = totalProfit - totalRefundLosses + resaleProfit - tradeInExcess;
 
   // Today's sales
   const todaySalesList = sales.filter(sale => sale.saleDate === today);
@@ -194,6 +206,7 @@ export function calculateReports(
     netProfit,
     refundLosses: totalRefundLosses, // Total actual losses (refunds + exchanges)
     tradeInValue, // Buyback value (not a loss)
+    tradeInExcess, // Excess trade-in value when trade-in > sale price (subtracted from profit)
     resaleProfit, // Profit from reselling returned phones
     resaleCount, // Number of resale transactions
     todaySales,

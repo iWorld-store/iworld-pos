@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS phones (
   is_credit BOOLEAN DEFAULT FALSE,
   credit_received DECIMAL(10, 2),
   credit_remaining DECIMAL(10, 2),
+  is_trade_in BOOLEAN DEFAULT FALSE,
   notes TEXT,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -48,6 +49,9 @@ CREATE TABLE IF NOT EXISTS sales (
   credit_remaining DECIMAL(10, 2),
   is_resale BOOLEAN DEFAULT FALSE,
   original_return_id BIGINT, -- Will add foreign key constraint after returns table is created
+  is_trade_in BOOLEAN DEFAULT FALSE,
+  trade_in_value DECIMAL(10, 2),
+  trade_in_phone_id BIGINT REFERENCES phones(id) ON DELETE SET NULL,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -83,6 +87,16 @@ ALTER TABLE sales
 -- Run this if the table already exists:
 -- ALTER TABLE sales ADD COLUMN IF NOT EXISTS is_resale BOOLEAN DEFAULT FALSE;
 -- ALTER TABLE sales ADD COLUMN IF NOT EXISTS original_return_id BIGINT REFERENCES returns(id) ON DELETE SET NULL;
+
+-- Migration: Update existing sales table to support trade-in
+-- Run this if the table already exists:
+-- ALTER TABLE sales ADD COLUMN IF NOT EXISTS is_trade_in BOOLEAN DEFAULT FALSE;
+-- ALTER TABLE sales ADD COLUMN IF NOT EXISTS trade_in_value DECIMAL(10, 2);
+-- ALTER TABLE sales ADD COLUMN IF NOT EXISTS trade_in_phone_id BIGINT REFERENCES phones(id) ON DELETE SET NULL;
+
+-- Migration: Update existing phones table to support trade-in flag
+-- Run this if the table already exists:
+-- ALTER TABLE phones ADD COLUMN IF NOT EXISTS is_trade_in BOOLEAN DEFAULT FALSE;
 
 -- 4. Credits Table
 CREATE TABLE IF NOT EXISTS credits (

@@ -9,7 +9,7 @@ import { Phone, PaymentMethod } from '@/types';
 
 const PAYMENT_METHODS: PaymentMethod[] = ['Cash', 'Card', 'Bank Transfer', 'Other'];
 
-type SaleMode = 'sale' | 'credit';
+type SaleMode = 'sale' | 'credit' | 'tradein';
 
 export default function SellPhone() {
   const router = useRouter();
@@ -23,11 +23,14 @@ export default function SellPhone() {
     remainingAmount: '',
     customerName: '',
     paymentMethod: 'Cash' as PaymentMethod,
+    tradeInValue: '',
+    tradeInPhoneId: null as number | null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
+  const isRestoringState = useRef(false);
 
   // Handle barcode scanner input
   useEffect(() => {
@@ -42,15 +45,86 @@ export default function SellPhone() {
     return () => window.removeEventListener('keypress', handleKeyPress);
   }, [imei]);
 
-  // Reset form when sale mode changes
+  // Restore state when returning from add inventory page (MUST RUN FIRST)
   useEffect(() => {
-    if (phone) {
+    const params = new URLSearchParams(window.location.search);
+    const tradeInPhoneId = params.get('tradeInPhoneId');
+    const returnToSell = sessionStorage.getItem('returnToSell');
+    
+    if (returnToSell === 'true' && tradeInPhoneId) {
+      isRestoringState.current = true; // Set flag to prevent form reset
+      
+      // Get all saved data
+      const phoneAData = sessionStorage.getItem('tradeInPhoneA');
+      const savedSaleMode = sessionStorage.getItem('saleMode');
+      const savedFormData = sessionStorage.getItem('saleFormData');
+      
+      // Restore form data FIRST with tradeInPhoneId
+      if (savedFormData) {
+        try {
+          const formDataObj = JSON.parse(savedFormData);
+          setFormData({
+            ...formDataObj,
+            tradeInPhoneId: parseInt(tradeInPhoneId),
+          });
+        } catch (e) {
+          console.error('Error restoring form data:', e);
+          setFormData(prev => ({
+            ...prev,
+            tradeInPhoneId: parseInt(tradeInPhoneId),
+          }));
+        }
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          tradeInPhoneId: parseInt(tradeInPhoneId),
+        }));
+      }
+      
+      // Restore Phone A and sale mode together
+      if (phoneAData) {
+        try {
+          const phoneA = JSON.parse(phoneAData);
+          setPhone(phoneA);
+        } catch (e) {
+          console.error('Error restoring phone A:', e);
+        }
+      }
+      
+      if (savedSaleMode === 'tradein') {
+        setSaleMode('tradein');
+      }
+      
+      // Clean URL first
+      window.history.replaceState({}, '', window.location.pathname);
+      
+      // Clean up sessionStorage and reset flag after state updates complete
+      // Delay ensures reset useEffect has time to check the flag
+      setTimeout(() => {
+        sessionStorage.removeItem('returnToSell');
+        sessionStorage.removeItem('tradeInPhoneA');
+        sessionStorage.removeItem('saleMode');
+        sessionStorage.removeItem('saleFormData');
+        isRestoringState.current = false;
+      }, 500);
+    }
+  }, []);
+
+  // Reset form when sale mode or phone changes (but NOT when restoring state)
+  useEffect(() => {
+    // Check if we're in the middle of restoring state from add inventory
+    const isReturningFromAddInventory = sessionStorage.getItem('returnToSell') === 'true';
+    
+    // Only reset if we have a phone AND we're not restoring state
+    if (phone && !isRestoringState.current && !isReturningFromAddInventory) {
       setFormData({
         salePrice: '',
         receivedAmount: '',
         remainingAmount: '',
         customerName: '',
         paymentMethod: 'Cash',
+        tradeInValue: '',
+        tradeInPhoneId: null,
       });
       setError('');
     }
@@ -128,11 +202,11 @@ export default function SellPhone() {
         setError('Valid sale price is required');
         return;
       }
-    } else {
+    } else if (saleMode === 'credit') {
       // Credit sale validation
-    if (!formData.salePrice || parseFloat(formData.salePrice) <= 0) {
-      setError('Valid sale price is required');
-      return;
+      if (!formData.salePrice || parseFloat(formData.salePrice) <= 0) {
+        setError('Valid sale price is required');
+        return;
       }
       if (!formData.receivedAmount || parseFloat(formData.receivedAmount) <= 0) {
         setError('Valid received amount is required');
@@ -148,6 +222,24 @@ export default function SellPhone() {
         setError('Received amount must be less than sale price for credit sales');
         return;
       }
+    } else if (saleMode === 'tradein') {
+      // Trade-in sale validation
+      if (!formData.salePrice || parseFloat(formData.salePrice) <= 0) {
+        setError('Valid sale price is required');
+        return;
+      }
+      if (!formData.tradeInValue || parseFloat(formData.tradeInValue) <= 0) {
+        setError('Valid trade-in value is required');
+        return;
+      }
+      if (!formData.customerName.trim()) {
+        setError('Customer name is required for trade-in sales');
+        return;
+      }
+      if (!formData.tradeInPhoneId) {
+        setError('Please add the trade-in phone to inventory first');
+        return;
+      }
     }
 
     setLoading(true);
@@ -160,32 +252,32 @@ export default function SellPhone() {
 
       if (saleMode === 'sale') {
         // Regular sale
-      await phoneDB.addSale({
-        phoneId: phone.id!,
-        salePrice,
-        saleDate,
-        customerName: formData.customerName.trim() || undefined,
-        paymentMethod: formData.paymentMethod,
-        profit,
-        receiptNumber,
+        await phoneDB.addSale({
+          phoneId: phone.id!,
+          salePrice,
+          saleDate,
+          customerName: formData.customerName.trim() || undefined,
+          paymentMethod: formData.paymentMethod,
+          profit,
+          receiptNumber,
           isCredit: false,
-      });
+        });
 
-      // Prepare receipt data
-      const receipt = {
-        receiptNumber,
-        date: saleDate,
-        time: new Date().toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }),
-        model: phone.modelName,
-        imei: phone.imei1 + (phone.imei2 ? ` / ${phone.imei2}` : ''),
-        salePrice,
-        customerName: formData.customerName || 'N/A',
-        storeName: 'iWorld Store',
-      };
+        // Prepare receipt data
+        const receipt = {
+          receiptNumber,
+          date: saleDate,
+          time: new Date().toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }),
+          model: phone.modelName,
+          imei: phone.imei1 + (phone.imei2 ? ` / ${phone.imei2}` : ''),
+          salePrice,
+          customerName: formData.customerName || 'N/A',
+          storeName: 'iWorld Store',
+        };
 
-      setReceiptData(receipt);
-      setSuccess(true);
-      } else {
+        setReceiptData(receipt);
+        setSuccess(true);
+      } else if (saleMode === 'credit') {
         // Credit sale
         const received = parseFloat(formData.receivedAmount);
         const remaining = salePrice - received;
@@ -233,6 +325,55 @@ export default function SellPhone() {
 
         setReceiptData(receipt);
         setSuccess(true);
+      } else if (saleMode === 'tradein') {
+        // Trade-in sale
+        const tradeInValue = parseFloat(formData.tradeInValue);
+        const netAmount = salePrice - tradeInValue;
+        
+        // Calculate profit: if trade-in value > sale price, subtract excess from profit
+        let adjustedProfit = profit;
+        if (tradeInValue > salePrice) {
+          adjustedProfit = profit - (tradeInValue - salePrice);
+        }
+
+        await phoneDB.addSale({
+          phoneId: phone.id!,
+          salePrice,
+          saleDate,
+          customerName: formData.customerName.trim(),
+          paymentMethod: formData.paymentMethod,
+          profit: adjustedProfit,
+          receiptNumber,
+          isCredit: false,
+          isTradeIn: true,
+          tradeInValue,
+          tradeInPhoneId: formData.tradeInPhoneId!,
+        });
+
+        // Mark trade-in phone as trade-in
+        if (formData.tradeInPhoneId) {
+          await phoneDB.updatePhone(formData.tradeInPhoneId, {
+            isTradeIn: true,
+          });
+        }
+
+        // Prepare receipt data
+        const receipt = {
+          receiptNumber,
+          date: saleDate,
+          time: new Date().toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }),
+          model: phone.modelName,
+          imei: phone.imei1 + (phone.imei2 ? ` / ${phone.imei2}` : ''),
+          salePrice,
+          tradeInValue,
+          netAmount,
+          customerName: formData.customerName,
+          storeName: 'iWorld Store',
+          isTradeIn: true,
+        };
+
+        setReceiptData(receipt);
+        setSuccess(true);
       }
 
       // Reset form
@@ -245,13 +386,22 @@ export default function SellPhone() {
         remainingAmount: '',
         customerName: '',
         paymentMethod: 'Cash',
+        tradeInValue: '',
+        tradeInPhoneId: null,
       });
 
       // Focus back on IMEI for next sale
       setTimeout(() => imeiRef.current?.focus(), 100);
-    } catch (err) {
-      setError('Failed to process sale');
-      console.error(err);
+    } catch (err: any) {
+      console.error('Sale error:', err);
+      // Show more detailed error message
+      if (err?.message) {
+        setError(`Failed to process sale: ${err.message}`);
+      } else if (err?.code) {
+        setError(`Database error (${err.code}): ${err.message || 'Please check your database schema'}`);
+      } else {
+        setError('Failed to process sale. Please check the console for details.');
+      }
     } finally {
       setLoading(false);
     }
@@ -268,6 +418,14 @@ export default function SellPhone() {
             <div><strong>Received:</strong> ${receiptData.receivedAmount.toLocaleString('en-PK')} PKR</div>
             <div><strong>Remaining:</strong> ${receiptData.remainingAmount.toLocaleString('en-PK')} PKR</div>
             <div style="color: red; font-weight: bold; margin-top: 10px;">⚠️ CREDIT SALE</div>
+          `
+      : '';
+    
+    const tradeInSection = receiptData.isTradeIn
+      ? `
+            <div><strong>Trade-In Value:</strong> ${receiptData.tradeInValue.toLocaleString('en-PK')} PKR</div>
+            <div><strong>Net Amount:</strong> ${receiptData.netAmount.toLocaleString('en-PK')} PKR</div>
+            <div style="color: blue; font-weight: bold; margin-top: 10px;">🔄 TRADE-IN SALE</div>
           `
       : '';
 
@@ -333,7 +491,8 @@ export default function SellPhone() {
             <div><strong>IMEI:</strong> ${receiptData.imei}</div>
             <div><strong>Customer:</strong> ${receiptData.customerName}</div>
             ${creditSection}
-            ${!receiptData.isCredit ? `<div class="total">Total: ${receiptData.salePrice.toLocaleString('en-PK')} PKR</div>` : ''}
+            ${tradeInSection}
+            ${!receiptData.isCredit && !receiptData.isTradeIn ? `<div class="total">Total: ${receiptData.salePrice.toLocaleString('en-PK')} PKR</div>` : ''}
           </div>
           <div class="footer">
             <p>Thank you for your purchase!</p>
@@ -424,11 +583,11 @@ export default function SellPhone() {
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Sale Type
                 </label>
-                <div className="flex gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <button
                     type="button"
                     onClick={() => setSaleMode('sale')}
-                    className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-colors ${
+                    className={`py-3 px-6 rounded-lg font-semibold transition-colors ${
                       saleMode === 'sale'
                         ? 'bg-accent-green text-white'
                         : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
@@ -439,13 +598,24 @@ export default function SellPhone() {
                   <button
                     type="button"
                     onClick={() => setSaleMode('credit')}
-                    className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-colors ${
+                    className={`py-3 px-6 rounded-lg font-semibold transition-colors ${
                       saleMode === 'credit'
                         ? 'bg-accent-blue text-white'
                         : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                     }`}
                   >
                     Credit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSaleMode('tradein')}
+                    className={`py-3 px-6 rounded-lg font-semibold transition-colors ${
+                      saleMode === 'tradein'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    Trade-In
                   </button>
                 </div>
               </div>
@@ -504,7 +674,7 @@ export default function SellPhone() {
                 </select>
               </div>
                 </>
-              ) : (
+              ) : saleMode === 'credit' ? (
                 <>
                   {/* Sale Price for Credit */}
                   <div>
@@ -590,6 +760,136 @@ export default function SellPhone() {
                     </select>
                   </div>
                 </>
+              ) : (
+                <>
+                  {/* Trade-In Sale Form */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Sale Price of Phone A (PKR) <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.salePrice}
+                      onChange={(e) => handleSalePriceChange(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                    {formData.salePrice && phone && (
+                      <p className="mt-2 text-sm text-green-400">
+                        Profit: {(parseFloat(formData.salePrice) - phone.purchasePrice).toLocaleString('en-PK')} PKR
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Trade-In Value of Phone B (PKR) <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.tradeInValue}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFormData(prev => ({ ...prev, tradeInValue: value }));
+                      }}
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                    {formData.salePrice && formData.tradeInValue && (
+                      <p className="mt-2 text-sm text-blue-400">
+                        Net Amount: {(parseFloat(formData.salePrice) - parseFloat(formData.tradeInValue || '0')).toLocaleString('en-PK')} PKR
+                        {parseFloat(formData.tradeInValue) > parseFloat(formData.salePrice) && (
+                          <span className="text-yellow-400 ml-2">⚠️ Trade-in exceeds sale price</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Add Trade-In Phone Button */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!formData.tradeInValue || parseFloat(formData.tradeInValue) <= 0) {
+                          setError('Please enter trade-in value first');
+                          return;
+                        }
+                        if (!phone) {
+                          setError('Please search for phone first');
+                          return;
+                        }
+                        // Store Phone A data to preserve state when redirecting back
+                        sessionStorage.setItem('tradeInPhoneA', JSON.stringify({
+                          id: phone.id,
+                          imei1: phone.imei1,
+                          imei2: phone.imei2,
+                          modelName: phone.modelName,
+                          storage: phone.storage,
+                          color: phone.color,
+                          condition: phone.condition,
+                          unlockStatus: phone.unlockStatus,
+                          batteryHealth: phone.batteryHealth,
+                          purchaseDate: phone.purchaseDate,
+                          purchasePrice: phone.purchasePrice,
+                          status: phone.status,
+                          vendor: phone.vendor,
+                          notes: phone.notes,
+                        }));
+                        // Store trade-in value in sessionStorage to pass to add inventory page
+                        sessionStorage.setItem('tradeInValue', formData.tradeInValue);
+                        sessionStorage.setItem('returnToSell', 'true');
+                        sessionStorage.setItem('saleMode', 'tradein');
+                        sessionStorage.setItem('saleFormData', JSON.stringify(formData));
+                        router.push('/inventory/add');
+                      }}
+                      className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      ➕ Add Trade-In Phone to Inventory
+                    </button>
+                    {formData.tradeInPhoneId && (
+                      <p className="mt-2 text-sm text-green-400">
+                        ✓ Trade-in phone added to inventory
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Customer Name - Required for Trade-In */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Customer Name <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.customerName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                      placeholder="Customer name"
+                      required
+                    />
+                  </div>
+
+                  {/* Payment Method */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Payment Method (Optional)
+                    </label>
+                    <select
+                      value={formData.paymentMethod}
+                      onChange={(e) => setFormData(prev => ({ ...prev, paymentMethod: e.target.value as PaymentMethod }))}
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                    >
+                      {PAYMENT_METHODS.map(method => (
+                        <option key={method} value={method}>{method}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
               )}
             </>
           )}
@@ -616,7 +916,11 @@ export default function SellPhone() {
           <div className="flex gap-4">
             <button
               type="submit"
-              disabled={loading || !phone}
+              disabled={
+                loading || 
+                !phone || 
+                (saleMode === 'tradein' && !formData.tradeInPhoneId)
+              }
               className="flex-1 bg-accent-green hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Processing...' : 'Complete Sale'}

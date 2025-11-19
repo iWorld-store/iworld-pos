@@ -26,6 +26,7 @@ export interface Phone {
   isCredit?: boolean; // true if sold on credit
   creditReceived?: number; // amount received for credit sale
   creditRemaining?: number; // remaining amount to be paid
+  isTradeIn?: boolean; // true if this phone was received as a trade-in
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -45,6 +46,9 @@ export interface Sale {
   creditRemaining?: number; // remaining amount to be paid
   isResale?: boolean; // true if this is a resale of a returned phone
   originalReturnId?: number; // ID of the return record if this is a resale
+  isTradeIn?: boolean; // true if this sale includes a trade-in
+  tradeInValue?: number; // value of the trade-in phone
+  tradeInPhoneId?: number; // ID of the trade-in phone in inventory
   createdAt?: string;
 }
 
@@ -100,7 +104,9 @@ export interface ReportData {
   netProfit: number;
   refundLosses: number; // Actual losses from refunds (money lost)
   tradeInValue: number; // Value of trade-ins (buyback cost, not a loss)
+  tradeInExcess: number; // Excess trade-in value when trade-in > sale price (subtracted from profit)
   resaleProfit: number; // Profit from reselling returned phones
+  resaleCount: number; // Number of resale transactions
   todaySales: {
     count: number;
     revenue: number;
